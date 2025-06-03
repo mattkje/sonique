@@ -22,19 +22,20 @@ struct PianoKey {
     std::string label;
 };
 
+// In GeneratePianoKeys, assign correct MIDI numbers to each key
 std::vector<PianoKey> GeneratePianoKeys(int windowWidth, int keyboardY, int keyboardHeight) {
     std::vector<PianoKey> keys;
     float whiteKeyWidth = static_cast<float>(windowWidth) / NUM_WHITE_KEYS;
     float blackKeyWidth = whiteKeyWidth * 0.6f;
     float blackKeyHeight = keyboardHeight * 0.6f;
 
+    int midi = 21; // Start at A0
     int whiteKeyIndex = 0;
-    int midi = 21; // A0 MIDI number
 
     // Generate white keys
     for (int i = 0; i < NUM_WHITE_KEYS; ++i) {
-        int octave = (whiteKeyIndex + 9) / 7;
-        int noteInOctave = (whiteKeyIndex + 2) % 7;
+        int noteInOctave = whiteKeyIndex % 7;
+        int octave = (midi / 12) - 1;
         std::string label = whiteKeyNames[noteInOctave] + std::to_string(octave);
         keys.push_back({
             Rectangle{
@@ -46,18 +47,20 @@ std::vector<PianoKey> GeneratePianoKeys(int windowWidth, int keyboardY, int keyb
             label
         });
         ++whiteKeyIndex;
-        ++midi;
+        // Skip black keys in MIDI numbering
+        do {
+            ++midi;
+        } while ((midi % 12 == 1) || (midi % 12 == 3) || (midi % 12 == 6) || (midi % 12 == 8) || (midi % 12 == 10));
     }
 
     // Generate black keys
+    midi = 22; // First black key is A#0
     whiteKeyIndex = 0;
-    midi = 22;
     for (int i = 0; i < NUM_WHITE_KEYS; ++i) {
-        int noteInOctave = (whiteKeyIndex + 2) % 7;
-        int octave = (whiteKeyIndex + 9) / 7;
+        int noteInOctave = whiteKeyIndex % 7;
+        int octave = (midi / 12) - 1;
         if (blackKeyPattern[noteInOctave]) {
-            std::string label = blackKeyNames[(noteInOctave < 2) ? noteInOctave : noteInOctave - 1] +
-                                std::to_string(octave);
+            std::string label = blackKeyNames[(noteInOctave < 2) ? noteInOctave : noteInOctave - 1] + std::to_string(octave);
             float x = (whiteKeyIndex + 1) * whiteKeyWidth - blackKeyWidth / 2;
             keys.push_back({
                 Rectangle{x, static_cast<float>(keyboardY), blackKeyWidth, blackKeyHeight},
@@ -65,10 +68,16 @@ std::vector<PianoKey> GeneratePianoKeys(int windowWidth, int keyboardY, int keyb
                 midi,
                 label
             });
-            ++midi;
+            // Advance to next black key MIDI number
+            do {
+                ++midi;
+            } while ((midi % 12 != 1) && (midi % 12 != 3) && (midi % 12 != 6) && (midi % 12 != 8) && (midi % 12 != 10));
         }
         ++whiteKeyIndex;
-        ++midi;
+        // Advance midi to next white key
+        do {
+            ++midi;
+        } while ((midi % 12 == 1) || (midi % 12 == 3) || (midi % 12 == 6) || (midi % 12 == 8) || (midi % 12 == 10));
     }
     return keys;
 }
@@ -79,11 +88,13 @@ int main() {
     fluid_audio_driver_t* adriver = new_fluid_audio_driver(settings, synth);
 
     // Load your SF2 file (replace with your actual path)
-    int sfid = fluid_synth_sfload(synth, "soundfont.sf2", 1);
-    if (sfid == FLUID_FAILED) {
-        printf("Failed to load SF2 file\n");
-        // Handle error or exit
-    }
+    int sfid_piano = fluid_synth_sfload(synth, "SoundFonts/piano.sf2", 1);
+    int sfid_drums = fluid_synth_sfload(synth, "SoundFonts/drums.sf2", 1);
+    // set the default soundfont to piano
+    fluid_synth_program_select(synth, 0, sfid_piano, 0, 0);
+    fluid_synth_program_select(synth, 9, sfid_drums, 128, 0);
+
+
 
     const int initialWidth = 1220;
     const int initialHeight = 800;
@@ -119,11 +130,28 @@ int main() {
             WHITE
         );
 
+        static std::vector<bool> keyWasPressed(keys.size(), false);
+
         // Draw white keys
-        for (const auto &key: keys) {
+        int midi = 24; // Start at A0
+        for (size_t i = 0, whiteIndex = 0; i < keys.size(); ++i) {
+            auto &key = keys[i];
             if (!key.isBlack) {
-                bool pressed = CheckCollisionPointRec(GetMousePosition(), key.rect) && IsMouseButtonDown(
-                                   MOUSE_LEFT_BUTTON);
+                int noteInOctave = whiteIndex % 7;
+                int octave = whiteIndex / 7 + 1; // A0 is midi 21, so first octave is 1
+                key.label = whiteKeyNames[noteInOctave] + std::to_string(octave);
+                key.midiNumber = midi;
+
+                // In the drawing loop, use key.midiNumber for note on/off
+                bool pressed = CheckCollisionPointRec(GetMousePosition(), key.rect) && IsMouseButtonDown(MOUSE_LEFT_BUTTON);
+                if (pressed && !keyWasPressed[i]) {
+                    fluid_synth_noteon(synth, 0, key.midiNumber, 100);
+                }
+                if (!pressed && keyWasPressed[i]) {
+                    fluid_synth_noteoff(synth, 0, key.midiNumber);
+                }
+                keyWasPressed[i] = pressed;
+                keyWasPressed[i] = pressed;
                 Texture2D tex = pressed ? whiteKeyPressed : whiteKey;
                 if (tex.id != 0) {
                     DrawTexturePro(
@@ -144,33 +172,70 @@ int main() {
                                {key.rect.x + key.rect.width / 2 - textSize.x / 2, key.rect.y + key.rect.height - 18},
                                12, 1, DARKGRAY);
                 }
+                // Skip black keys in MIDI numbering
+                do {
+                    ++midi;
+                } while ((midi % 12 == 1) || (midi % 12 == 3) || (midi % 12 == 6) || (midi % 12 == 8) || (midi % 12 == 10));
+                ++whiteIndex;
             }
         }
 
         // Draw black keys
-        for (const auto &key: keys) {
-            if (key.isBlack) {
-                bool pressed = CheckCollisionPointRec(GetMousePosition(), key.rect) && IsMouseButtonDown(
-                                   MOUSE_LEFT_BUTTON);
-                Texture2D tex = pressed ? blackKeyPressed : blackKey;
-                if (tex.id != 0) {
-                    DrawTexturePro(
-                        tex,
-                        Rectangle{0, 0, (float) tex.width, (float) tex.height},
-                        key.rect,
-                        Vector2{0, 0},
-                        0.0f,
-                        WHITE
-                    );
-                } else {
-                    DrawRectangleRec(key.rect, pressed ? GRAY : BLACK);
+        int blackKeyIndex = 0;
+        for (size_t i = 0; i < keys.size(); ++i) {
+            const auto& key = keys[i];
+            if (!key.isBlack) {
+                int noteInOctave = blackKeyIndex % 7;
+                // Only place a black key if the pattern says so
+                if (blackKeyPattern[noteInOctave]) {
+                    // Find the position between this white key and the next
+                    float whiteKeyWidth = key.rect.width;
+                    float blackKeyWidth = whiteKeyWidth * 0.6f;
+                    float blackKeyHeight = key.rect.height * 0.6f;
+                    float x = key.rect.x + whiteKeyWidth - blackKeyWidth / 2;
+                    Rectangle blackRect = {x, key.rect.y, blackKeyWidth, blackKeyHeight};
+
+                    // In the drawing loop, use key.midiNumber for note on/off
+                    bool pressed = CheckCollisionPointRec(GetMousePosition(), key.rect) && IsMouseButtonDown(MOUSE_LEFT_BUTTON);
+                    if (pressed && !keyWasPressed[i]) {
+                        fluid_synth_noteon(synth, 0, key.midiNumber, 100);
+                    }
+                    if (!pressed && keyWasPressed[i]) {
+                        fluid_synth_noteoff(synth, 0, key.midiNumber);
+                    }
+                    keyWasPressed[i] = pressed;
+                    keyWasPressed[i + NUM_WHITE_KEYS] = pressed;
+                    Texture2D tex = pressed ? blackKeyPressed : blackKey;
+                    if (tex.id != 0) {
+                        DrawTexturePro(
+                            tex,
+                            Rectangle{0, 0, (float) tex.width, (float) tex.height},
+                            blackRect,
+                            Vector2{0, 0},
+                            0.0f,
+                            WHITE
+                        );
+                    } else {
+                        DrawRectangleRec(blackRect, pressed ? GRAY : BLACK);
+                    }
+                    if (showKeyLabels) {
+                        std::string label = blackKeyNames[(noteInOctave < 2) ? noteInOctave : noteInOctave - 1] +
+                                            std::to_string((key.midiNumber / 12) - 1);
+                        Vector2 textSize = MeasureTextEx(font, label.c_str(), 10, 1);
+                        DrawTextEx(font, label.c_str(),
+                                   {blackRect.x + blackRect.width / 2 - textSize.x / 2, blackRect.y + blackRect.height - 16},
+                                   10, 1, RAYWHITE);
+                    }
+                    // Advance to next black key MIDI number
+                    do {
+                        ++midi;
+                    } while ((midi % 12 != 1) && (midi % 12 != 3) && (midi % 12 != 6) && (midi % 12 != 8) && (midi % 12 != 10));
                 }
-                if (showKeyLabels) {
-                    Vector2 textSize = MeasureTextEx(font, key.label.c_str(), 10, 1);
-                    DrawTextEx(font, key.label.c_str(),
-                               {key.rect.x + key.rect.width / 2 - textSize.x / 2, key.rect.y + key.rect.height - 16},
-                               10, 1, RAYWHITE);
-                }
+                ++blackKeyIndex;
+                // Advance midi to next white key
+                do {
+                    ++midi;
+                } while ((midi % 12 == 1) || (midi % 12 == 3) || (midi % 12 == 6) || (midi % 12 == 8) || (midi % 12 == 10));
             }
         }
 

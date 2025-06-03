@@ -14,6 +14,7 @@ add_executable(untitled main.cpp)
 
 file(COPY assets DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 file(COPY Neutraface.otf DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+file(COPY SoundFonts DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
 target_include_directories(untitled PRIVATE ${FLUIDSYNTH_INCLUDE_DIRS})
 target_link_libraries(untitled PRIVATE raylib ${FLUIDSYNTH_LIBRARIES} ${FLUIDSYNTH_LDFLAGS})
