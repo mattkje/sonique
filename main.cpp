@@ -17,7 +17,7 @@ const std::array<int, NUM_BLACK_KEYS> blackKeyOffsets = {0, 1, 3, 4, 5}; // C#, 
 const std::array<std::string, NUM_BLACK_KEYS> blackKeyLabels = {"C#", "D#", "F#", "G#", "A#"};
 
 int main() {
-    InitWindow(800, 600, "Synthesia-like Piano");
+    InitWindow(800, 600, "Sonique");
     SetTargetFPS(60);
 
     while (!WindowShouldClose()) {
