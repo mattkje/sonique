@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.31)
-project(untitled)
+project(Sonique)
 
 set(CMAKE_CXX_STANDARD 20)
 
@@ -10,11 +10,15 @@ set(CMAKE_INCLUDE_PATH "/opt/homebrew/include")
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(FLUIDSYNTH REQUIRED fluidsynth)
 
-add_executable(untitled main.cpp)
+set(MACOSX_BUNDLE_ICON_FILE appicon.icns)
+set_source_files_properties(appicon.icns PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
 
-file(COPY assets DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-file(COPY Neutraface.otf DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-file(COPY SoundFonts DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+add_executable(Sonique MACOSX_BUNDLE main.cpp appicon.icns)
+set_target_properties(Sonique PROPERTIES MACOSX_BUNDLE TRUE)
 
-target_include_directories(untitled PRIVATE ${FLUIDSYNTH_INCLUDE_DIRS})
-target_link_libraries(untitled PRIVATE raylib ${FLUIDSYNTH_LIBRARIES} ${FLUIDSYNTH_LDFLAGS})
+file(COPY assets DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/Sonique.app/Contents/Resources)
+file(COPY Neutraface.otf DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/Sonique.app/Contents/Resources)
+file(COPY SoundFonts DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/Sonique.app/Contents/Resources)
+
+target_include_directories(Sonique PRIVATE ${FLUIDSYNTH_INCLUDE_DIRS})
+target_link_libraries(Sonique PRIVATE raylib ${FLUIDSYNTH_LIBRARIES} ${FLUIDSYNTH_LDFLAGS} "-framework CoreFoundation")
