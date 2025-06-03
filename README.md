@@ -22,3 +22,4 @@ Designed for learners, performers, and music enthusiasts, it offers a clean, res
 * **C++** – Core programming language
 * **Raylib** – Lightweight library for rendering and game loop management
 * **RtMidi** – Cross-platform library for MIDI input and output
+* **FluidSynth** – Software synthesizer for MIDI playback
