@@ -58,7 +58,7 @@ std::vector<PianoKey> GeneratePianoKeys(int windowWidth, int keyboardY, int keyb
         if (noteNames[noteInOctave].length() == 1) {
             keys.push_back({
                 Rectangle{
-                    whiteIndex * whiteKeyWidth, static_cast<float>(keyboardY+2), whiteKeyWidth,
+                    whiteIndex * whiteKeyWidth, static_cast<float>(keyboardY + 2), whiteKeyWidth,
                     static_cast<float>(keyboardHeight)
                 },
                 false,
@@ -104,11 +104,13 @@ int midi_event_handler(void *data, fluid_midi_event_t *event) {
     int type = fluid_midi_event_get_type(event);
     int key = fluid_midi_event_get_key(event);
     int channel = fluid_midi_event_get_channel(event);
-    if (key >= 21 && key <= 108 && channel != 9) { // Exclude drums
+    if (key >= 21 && key <= 108 && channel != 9) {
+        // Exclude drums
         int idx = key - 21;
         if (type == FLUID_SEQ_NOTEON && fluid_midi_event_get_velocity(event) > 0) {
             midiKeyStates[channel][idx] = true;
-        } else if (type == FLUID_SEQ_NOTEOFF || (type == FLUID_SEQ_NOTEON && fluid_midi_event_get_velocity(event) == 0)) {
+        } else if (type == FLUID_SEQ_NOTEOFF || (type == FLUID_SEQ_NOTEON && fluid_midi_event_get_velocity(event) ==
+                                                 0)) {
             midiKeyStates[channel][idx] = false;
         }
     }
@@ -187,7 +189,7 @@ void DrawPianoKeys(const std::vector<PianoKey> &keys, std::vector<bool> &keyWasP
         if (key.isBlack) {
             bool midiPressed = false;
 
-            bool pressed = midiPressed || CheckCollisionPointRec(mousePos, key.rect) && IsMouseButtonDown(
+            bool pressed = CheckCollisionPointRec(mousePos, key.rect) && IsMouseButtonDown(
                                MOUSE_LEFT_BUTTON);
             if (pressed && !keyWasPressed[i]) {
                 fluid_synth_noteon(synth, 0, key.midiNumber, 100);
@@ -207,8 +209,8 @@ void DrawPianoKeys(const std::vector<PianoKey> &keys, std::vector<bool> &keyWasP
             float topBorder = 1.0f;
             float bottomBorder = 2.0f;
             Rectangle borderRect = {
-                key.rect.x - sideBorder-1,
-                key.rect.y - topBorder+4,
+                key.rect.x - sideBorder - 1,
+                key.rect.y - topBorder + 4,
                 key.rect.width + 2 * sideBorder,
                 key.rect.height + topBorder + bottomBorder
             };
@@ -238,7 +240,7 @@ void DrawPianoKeys(const std::vector<PianoKey> &keys, std::vector<bool> &keyWasP
 }
 
 int main() {
-    bool isPlaying = true;
+    bool isPlaying = false;
     fluid_settings_t *settings = new_fluid_settings();
     fluid_synth_t *synth = new_fluid_synth(settings);
     fluid_audio_driver_t *adriver = new_fluid_audio_driver(settings, synth);
@@ -256,7 +258,6 @@ int main() {
     fluid_player_t *player = new_fluid_player(synth);
     fluid_player_add(player, GetResourcePath("assets/testSong.mid").c_str());
     fluid_player_set_playback_callback(player, midi_event_handler, synth);
-    fluid_player_play(player);
 
     const int initialWidth = 1220;
     const int initialHeight = 800;
@@ -311,7 +312,7 @@ int main() {
 
         // Draw toolbar background
         DrawRectangle(0, 0, windowWidth, 50, BLACK);
-        DrawLineEx({0, 50}, {(float)windowWidth, 50}, 1.0f, DARKGRAY);
+        DrawLineEx({0, 50}, {(float) windowWidth, 50}, 1.0f, DARKGRAY);
 
         // Progress Bar
         float progressBarWidth = windowWidth;
@@ -319,16 +320,16 @@ int main() {
         float progressBarX = 0;
         float progressBarY = 51;
         DrawRectangleRec({progressBarX, progressBarY, progressBarWidth, progressBarHeight}, GRAY);
-        DrawLineEx({0, 81}, {(float)windowWidth, 81}, 1.0f, DARKGRAY);
+        DrawLineEx({0, 82}, {(float) windowWidth, 81}, 1.0f, DARKGRAY);
         // Calculate progress
         long total_ticks = fluid_player_get_total_ticks(player);
         long current_tick = fluid_player_get_current_tick(player);
 
-        double progress = (double)current_tick / (double)total_ticks;
+        double progress = (double) current_tick / (double) total_ticks;
 
         // Draw progress
         DrawRectangleRec(
-            {progressBarX, progressBarY, (float)(progress * progressBarWidth), progressBarHeight},
+            {progressBarX, progressBarY, (float) (progress * progressBarWidth), progressBarHeight},
             SKYBLUE
         );
 
@@ -339,8 +340,11 @@ int main() {
         float iconSize = 24;
         DrawTexturePro(
             icon,
-            Rectangle{0, 0, (float)icon.width, (float)icon.height},
-            Rectangle{playBtn.x + (playBtn.width - iconSize) / 2, playBtn.y + (playBtn.height - iconSize) / 2, iconSize, iconSize},
+            Rectangle{0, 0, (float) icon.width, (float) icon.height},
+            Rectangle{
+                playBtn.x + (playBtn.width - iconSize) / 2, playBtn.y + (playBtn.height - iconSize) / 2, iconSize,
+                iconSize
+            },
             Vector2{0, 0},
             0.0f,
             WHITE
