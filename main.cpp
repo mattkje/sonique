@@ -6,7 +6,7 @@
 #include <fluidsynth.h>
 #include <CoreFoundation/CoreFoundation.h>
 
-constexpr bool showKeyLabels = false;
+constexpr bool showKeyLabels = true;
 
 constexpr int NUM_WHITE_KEYS = 52;
 constexpr int NUM_BLACK_KEYS = 36;
@@ -45,7 +45,7 @@ std::vector<PianoKey> GeneratePianoKeys(int windowWidth, int keyboardY, int keyb
     std::vector<PianoKey> keys;
     float whiteKeyWidth = static_cast<float>(windowWidth) / NUM_WHITE_KEYS;
     float blackKeyWidth = whiteKeyWidth * 0.6f;
-    float blackKeyHeight = keyboardHeight * 0.6f;
+    float blackKeyHeight = keyboardHeight * 0.65f;
 
     // Generate all keys from MIDI 21 (A0) to 108 (C8)
     int whiteIndex = 0;
@@ -58,7 +58,7 @@ std::vector<PianoKey> GeneratePianoKeys(int windowWidth, int keyboardY, int keyb
         if (noteNames[noteInOctave].length() == 1) {
             keys.push_back({
                 Rectangle{
-                    whiteIndex * whiteKeyWidth, static_cast<float>(keyboardY), whiteKeyWidth,
+                    whiteIndex * whiteKeyWidth, static_cast<float>(keyboardY+2), whiteKeyWidth,
                     static_cast<float>(keyboardHeight)
                 },
                 false,
@@ -172,7 +172,8 @@ void DrawPianoKeys(const std::vector<PianoKey> &keys, std::vector<bool> &keyWasP
                 DrawRectangleRec(key.rect, pressed ? LIGHTGRAY : RAYWHITE);
             }
             DrawRectangleLinesEx(key.rect, 1, GRAY);
-            if (showKeyLabels) {
+
+            if (showKeyLabels && key.label[0] == 'C') {
                 Vector2 textSize = MeasureTextEx(font, key.label.c_str(), 12, 1);
                 DrawTextEx(font, key.label.c_str(),
                            {key.rect.x + key.rect.width / 2 - textSize.x / 2, key.rect.y + key.rect.height - 18},
@@ -201,6 +202,18 @@ void DrawPianoKeys(const std::vector<PianoKey> &keys, std::vector<bool> &keyWasP
                     break;
                 }
             }
+            // Draw a border (gap) behind the black key: thin sides/top, thick bottom
+            float sideBorder = 1.5f;
+            float topBorder = 1.0f;
+            float bottomBorder = 2.0f;
+            Rectangle borderRect = {
+                key.rect.x - sideBorder-1,
+                key.rect.y - topBorder+4,
+                key.rect.width + 2 * sideBorder,
+                key.rect.height + topBorder + bottomBorder
+            };
+            DrawRectangleRec(borderRect, BLACK);
+
             Texture2D tex = pressed || midiPressed ? blackKeyPressed : blackKey;
             if (tex.id != 0) {
                 DrawTexturePro(
@@ -214,7 +227,7 @@ void DrawPianoKeys(const std::vector<PianoKey> &keys, std::vector<bool> &keyWasP
             } else {
                 DrawRectangleRec(key.rect, pressed ? GRAY : BLACK);
             }
-            if (showKeyLabels) {
+            if (false) {
                 Vector2 textSize = MeasureTextEx(font, key.label.c_str(), 10, 1);
                 DrawTextEx(font, key.label.c_str(),
                            {key.rect.x + key.rect.width / 2 - textSize.x / 2, key.rect.y + key.rect.height - 16},
@@ -241,7 +254,7 @@ int main() {
     }
 
     fluid_player_t *player = new_fluid_player(synth);
-    fluid_player_add(player, GetResourcePath("assets/cstnd.mid").c_str());
+    fluid_player_add(player, GetResourcePath("assets/testSong.mid").c_str());
     fluid_player_set_playback_callback(player, midi_event_handler, synth);
     fluid_player_play(player);
 
@@ -255,8 +268,8 @@ int main() {
     Texture2D background = LoadTexture(GetResourcePath("assets/background.png").c_str());
     Texture2D whiteKey = LoadTexture(GetResourcePath("assets/whiteKey.png").c_str());
     Texture2D whiteKeyPressed = LoadTexture(GetResourcePath("assets/whiteKeyPressed.png").c_str());
-    Texture2D blackKey = LoadTexture(GetResourcePath("assets/blackKey.png").c_str());
-    Texture2D blackKeyPressed = LoadTexture(GetResourcePath("assets/blackKeyPressed.png").c_str());
+    Texture2D blackKey = LoadTexture(GetResourcePath("assets/black-key-raised.png").c_str());
+    Texture2D blackKeyPressed = LoadTexture(GetResourcePath("assets/black-key-pressed.png").c_str());
     Texture2D playIcon = LoadTexture(GetResourcePath("assets/play.png").c_str());
     Texture2D pauseIcon = LoadTexture(GetResourcePath("assets/pause.png").c_str());
 
@@ -347,10 +360,11 @@ int main() {
                 }
             }
         }
+        DrawLineEx({0, (float) (keyboardY + 1)}, {(float) windowWidth, (float) (keyboardY + 1)}, 3.0f, RED);
         DrawPianoKeys(keys, keyWasPressed, synth, font, showKeyLabels, whiteKey, whiteKeyPressed, blackKey,
                       blackKeyPressed);
 
-        DrawLineEx({0, (float) (keyboardY - 1)}, {(float) windowWidth, (float) (keyboardY - 1)}, 3.0f, RED);
+
         //DrawTextEx(font, "Sonique", {10, 10}, 20, 0, WHITE);
 
         EndDrawing();
