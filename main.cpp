@@ -225,6 +225,7 @@ void DrawPianoKeys(const std::vector<PianoKey> &keys, std::vector<bool> &keyWasP
 }
 
 int main() {
+    bool isPlaying = true;
     fluid_settings_t *settings = new_fluid_settings();
     fluid_synth_t *synth = new_fluid_synth(settings);
     fluid_audio_driver_t *adriver = new_fluid_audio_driver(settings, synth);
@@ -246,7 +247,7 @@ int main() {
 
     const int initialWidth = 1220;
     const int initialHeight = 800;
-    InitWindow(initialWidth, initialHeight, "Sonique - Full Piano");
+    InitWindow(initialWidth, initialHeight, "Sonique");
     SetWindowState(FLAG_WINDOW_RESIZABLE);
     SetTargetFPS(60);
 
@@ -256,6 +257,8 @@ int main() {
     Texture2D whiteKeyPressed = LoadTexture(GetResourcePath("assets/whiteKeyPressed.png").c_str());
     Texture2D blackKey = LoadTexture(GetResourcePath("assets/blackKey.png").c_str());
     Texture2D blackKeyPressed = LoadTexture(GetResourcePath("assets/blackKeyPressed.png").c_str());
+    Texture2D playIcon = LoadTexture(GetResourcePath("assets/play.png").c_str());
+    Texture2D pauseIcon = LoadTexture(GetResourcePath("assets/pause.png").c_str());
 
     std::vector<PianoKey> keys;
     std::vector<bool> keyWasPressed;
@@ -272,6 +275,8 @@ int main() {
         if (keyWasPressed.size() != keys.size()) keyWasPressed.assign(keys.size(), false);
 
         BeginDrawing();
+
+
         DrawTexturePro(
             background,
             Rectangle{0, 0, (float) background.width, (float) background.height},
@@ -281,11 +286,72 @@ int main() {
             WHITE
         );
 
+
+        // Draw toolbar background
+        // Define button properties
+        float playBtnWidth = 80;
+        float playBtnHeight = 30;
+        float playBtnX = (windowWidth - playBtnWidth) / 2;
+        float playBtnY = 10;
+        Rectangle playBtn = {playBtnX, playBtnY, playBtnWidth, playBtnHeight};
+        Rectangle metroBtn = {200, 10, 80, 30}; // Adjust or reposition as needed
+
+        // Draw toolbar background
+        DrawRectangle(0, 0, windowWidth, 50, BLACK);
+        DrawLineEx({0, 50}, {(float)windowWidth, 50}, 1.0f, DARKGRAY);
+
+        // Progress Bar
+        float progressBarWidth = windowWidth;
+        float progressBarHeight = 30;
+        float progressBarX = 0;
+        float progressBarY = 51;
+        DrawRectangleRec({progressBarX, progressBarY, progressBarWidth, progressBarHeight}, GRAY);
+        DrawLineEx({0, 81}, {(float)windowWidth, 81}, 1.0f, DARKGRAY);
+        // Calculate progress
+        long total_ticks = fluid_player_get_total_ticks(player);
+        long current_tick = fluid_player_get_current_tick(player);
+
+        double progress = (double)current_tick / (double)total_ticks;
+
+        // Draw progress
+        DrawRectangleRec(
+            {progressBarX, progressBarY, (float)(progress * progressBarWidth), progressBarHeight},
+            SKYBLUE
+        );
+
+
+        // Draw buttons
+        DrawRectangleRec(metroBtn, DARKGRAY);
+        Texture2D icon = isPlaying ? pauseIcon : playIcon;
+        float iconSize = 24;
+        DrawTexturePro(
+            icon,
+            Rectangle{0, 0, (float)icon.width, (float)icon.height},
+            Rectangle{playBtn.x + (playBtn.width - iconSize) / 2, playBtn.y + (playBtn.height - iconSize) / 2, iconSize, iconSize},
+            Vector2{0, 0},
+            0.0f,
+            WHITE
+        );
+        DrawTextEx(font, "Metronome", {metroBtn.x + 15, metroBtn.y + 7}, 16, 1, WHITE);
+
+        // Handle button clicks
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+            Vector2 mouse = GetMousePosition();
+            if (CheckCollisionPointRec(mouse, playBtn)) {
+                if (isPlaying) {
+                    fluid_player_stop(player);
+                    isPlaying = false;
+                } else {
+                    fluid_player_play(player);
+                    isPlaying = true;
+                }
+            }
+        }
         DrawPianoKeys(keys, keyWasPressed, synth, font, showKeyLabels, whiteKey, whiteKeyPressed, blackKey,
                       blackKeyPressed);
 
         DrawLineEx({0, (float) (keyboardY - 1)}, {(float) windowWidth, (float) (keyboardY - 1)}, 3.0f, RED);
-        DrawTextEx(font, "Sonique", {10, 10}, 20, 2, WHITE);
+        //DrawTextEx(font, "Sonique", {10, 10}, 20, 0, WHITE);
 
         EndDrawing();
     }
@@ -294,6 +360,8 @@ int main() {
     delete_fluid_synth(synth);
     delete_fluid_settings(settings);
 
+    UnloadTexture(playIcon);
+    UnloadTexture(pauseIcon);
     UnloadTexture(whiteKey);
     UnloadTexture(whiteKeyPressed);
     UnloadTexture(blackKey);
