@@ -4,6 +4,10 @@
 #include <vector>
 #include <iostream>
 #include <fluidsynth.h>
+#ifndef FLUID_PLAYER_TEMPO_EXTERNAL_BPM
+#define FLUID_PLAYER_TEMPO_EXTERNAL_BPM 1
+#endif
+#include <fstream>
 #include <CoreFoundation/CoreFoundation.h>
 
 constexpr bool showKeyLabels = true;
@@ -20,6 +24,14 @@ const std::array<std::string, 12> noteNames = {
 const std::array<std::string, 7> whiteKeyNames = {"A", "B", "C", "D", "E", "F", "G"};
 const std::array<int, 7> blackKeyPattern = {1, 0, 1, 1, 1, 0, 1}; // A#, C#, D#, F#, G#
 const std::array<std::string, 5> blackKeyNames = {"A#", "C#", "D#", "F#", "G#"};
+
+int tempo = 120;
+int currentSongIndex = 0;
+int amountOfSongs = 0;
+
+bool dropdownOpen = false;
+float dropdownX = 20, dropdownY = 10, dropdownWidth = 260, dropdownHeight = 30;
+Rectangle dropdownBox = {dropdownX, dropdownY, dropdownWidth, dropdownHeight};
 
 struct PianoKey {
     Rectangle rect;
@@ -239,6 +251,29 @@ void DrawPianoKeys(const std::vector<PianoKey> &keys, std::vector<bool> &keyWasP
     }
 }
 
+// This methods manually reads the MIDI file to find the initial tempo in BPM.
+// Yes... this is kinda hacky, but it works for most MIDI files.
+int GetMidiInitialTempoBPM(const std::string& midiPath) {
+    std::ifstream file(midiPath, std::ios::binary);
+    if (!file) return -1;
+    unsigned char buf[4];
+    while (file.read((char*)buf, 1)) {
+        if (buf[0] == 0xFF) { // Meta event
+            file.read((char*)buf, 1);
+            if (buf[0] == 0x51) { // Set Tempo
+                file.read((char*)buf, 1); // length (should be 3)
+                if (buf[0] == 3) {
+                    file.read((char*)buf, 3);
+                    int mpqn = (buf[0] << 16) | (buf[1] << 8) | buf[2];
+                    if (mpqn > 0) return static_cast<int>(60000000.0 / mpqn);
+                }
+                break;
+            }
+        }
+    }
+    return -1;
+}
+
 int main() {
     bool isPlaying = false;
     fluid_settings_t *settings = new_fluid_settings();
@@ -255,9 +290,31 @@ int main() {
         fluid_synth_program_select(synth, i, general, 0, 0);
     }
 
+    std::vector<std::string> loadedMidiFiles = {
+        GetResourcePath("assets/cstnd.mid"),
+        GetResourcePath("assets/makebelieve.mid"),
+        GetResourcePath("assets/peacherinerag.mid"),
+        GetResourcePath("assets/testSong.mid"),
+        GetResourcePath("assets/hold.mid")
+    };
+    amountOfSongs = loadedMidiFiles.size();
+
+    std::vector<int> midiBpms;
+    for (const auto& path : loadedMidiFiles) {
+        int bpm = GetMidiInitialTempoBPM(path);
+        midiBpms.push_back(bpm > 0 ? bpm : 120); // fallback to 120 if not found
+    }
+
     fluid_player_t *player = new_fluid_player(synth);
-    fluid_player_add(player, GetResourcePath("assets/testSong.mid").c_str());
+    fluid_player_add(player, loadedMidiFiles[currentSongIndex].c_str());
     fluid_player_set_playback_callback(player, midi_event_handler, synth);
+
+    // get the tempo from the MIDI file manually and set it
+    std::string midiPath = loadedMidiFiles[currentSongIndex];
+    int midiBpm = GetMidiInitialTempoBPM(midiPath);
+    if (midiBpm > 0) tempo = midiBpm;
+    fluid_player_set_tempo(player, FLUID_PLAYER_TEMPO_EXTERNAL_BPM, tempo);
+
 
     const int initialWidth = 1220;
     const int initialHeight = 800;
@@ -300,8 +357,6 @@ int main() {
             WHITE
         );
 
-
-        // Draw toolbar background
         // Define button properties
         float playBtnWidth = 80;
         float playBtnHeight = 30;
@@ -310,9 +365,108 @@ int main() {
         Rectangle playBtn = {playBtnX, playBtnY, playBtnWidth, playBtnHeight};
         Rectangle metroBtn = {200, 10, 80, 30}; // Adjust or reposition as needed
 
+        // Tempo control variables (define at appropriate scope)
+        float tempoBoxWidth = 90;
+        float tempoBoxHeight = 30;
+        float tempoBoxX = metroBtn.x + metroBtn.width + 30;
+        float tempoBoxY = metroBtn.y;
+        Rectangle tempoBox = {tempoBoxX, tempoBoxY, tempoBoxWidth, tempoBoxHeight};
+        Rectangle upBtn = {tempoBoxX + tempoBoxWidth - 28, tempoBoxY + 2, 24, 12};
+        Rectangle downBtn = {tempoBoxX + tempoBoxWidth - 28, tempoBoxY + tempoBoxHeight - 14, 24, 12};
+
         // Draw toolbar background
         DrawRectangle(0, 0, windowWidth, 50, BLACK);
         DrawLineEx({0, 50}, {(float) windowWidth, 50}, 1.0f, DARKGRAY);
+
+        // Draw tempo box
+        DrawRectangleRec(tempoBox, DARKGRAY);
+
+        // Draw tempo value
+        std::string tempoStr = std::to_string(tempo);
+        Vector2 tempoTextSize = MeasureTextEx(font, tempoStr.c_str(), 16, 1);
+        DrawTextEx(font, tempoStr.c_str(),
+                   {tempoBox.x + 50 - tempoTextSize.x / 2, tempoBox.y + 6}, 16, 1, YELLOW);
+
+        // Draw up arrow
+        DrawRectangleRec(upBtn, GRAY);
+        DrawTriangle(
+            Vector2{upBtn.x + 12, upBtn.y + 3},
+            Vector2{upBtn.x + 5, upBtn.y + 10},
+            Vector2{upBtn.x + 19, upBtn.y + 10},
+            BLACK
+        );
+        // Draw down arrow
+        DrawRectangleRec(downBtn, GRAY);
+        DrawTriangle(
+            Vector2{downBtn.x + 12, downBtn.y + 9},
+            Vector2{downBtn.x + 5, downBtn.y + 2},
+            Vector2{downBtn.x + 19, downBtn.y + 2},
+            BLACK
+        );
+
+        // Handle tempo button clicks
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+            Vector2 mouse = GetMousePosition();
+            if (CheckCollisionPointRec(mouse, upBtn)) {
+                tempo += 1;
+                fluid_player_set_tempo(player, FLUID_PLAYER_TEMPO_EXTERNAL_BPM, tempo);
+            } else if (CheckCollisionPointRec(mouse, downBtn)) {
+                if (tempo > 20) tempo -= 1;
+                fluid_player_set_tempo(player, FLUID_PLAYER_TEMPO_EXTERNAL_BPM, tempo);
+            }
+        }
+
+        // Draw dropdown
+DrawRectangleRec(dropdownBox, DARKGRAY);
+DrawTextEx(font, loadedMidiFiles[currentSongIndex].substr(loadedMidiFiles[currentSongIndex].find_last_of('/') + 1).c_str(),
+           {dropdownX + 10, dropdownY + 6}, 16, 1, YELLOW);
+DrawTriangle(
+    Vector2{dropdownX + dropdownWidth - 20, dropdownY + 12},
+    Vector2{dropdownX + dropdownWidth - 10, dropdownY + 12},
+    Vector2{dropdownX + dropdownWidth - 15, dropdownY + 22},
+    BLACK
+);
+
+// Handle dropdown click
+if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+    Vector2 mouse = GetMousePosition();
+    if (CheckCollisionPointRec(mouse, dropdownBox)) {
+        dropdownOpen = !dropdownOpen;
+    } else if (dropdownOpen) {
+        // Check if a song is clicked
+        for (int i = 0; i < amountOfSongs; ++i) {
+            Rectangle itemRect = {dropdownX, dropdownY + dropdownHeight + i * dropdownHeight, dropdownWidth, dropdownHeight};
+            if (CheckCollisionPointRec(mouse, itemRect)) {
+                if (currentSongIndex != i) {
+                    currentSongIndex = i;
+                    // Reload MIDI
+                    fluid_player_stop(player);
+                    player = new_fluid_player(synth);
+                    fluid_player_add(player, loadedMidiFiles[currentSongIndex].c_str());
+                    fluid_player_set_playback_callback(player, midi_event_handler, synth);
+                    tempo = midiBpms[currentSongIndex];
+                    fluid_player_set_tempo(player, FLUID_PLAYER_TEMPO_EXTERNAL_BPM, tempo);
+                    isPlaying = false;
+                }
+                dropdownOpen = false;
+            }
+        }
+        // Click outside closes dropdown
+        if (!CheckCollisionPointRec(mouse, {dropdownX, dropdownY + dropdownHeight, dropdownWidth, dropdownHeight * amountOfSongs})) {
+            dropdownOpen = false;
+        }
+    }
+}
+
+// Draw dropdown items if open
+if (dropdownOpen) {
+    for (int i = 0; i < amountOfSongs; ++i) {
+        Rectangle itemRect = {dropdownX, dropdownY + dropdownHeight + i * dropdownHeight, dropdownWidth, dropdownHeight};
+        DrawRectangleRec(itemRect, (i == currentSongIndex) ? GRAY : LIGHTGRAY);
+        DrawTextEx(font, loadedMidiFiles[i].substr(loadedMidiFiles[i].find_last_of('/') + 1).c_str(),
+                   {dropdownX + 10, itemRect.y + 6}, 16, 1, BLACK);
+    }
+}
 
         // Progress Bar
         float progressBarWidth = windowWidth;
@@ -335,7 +489,7 @@ int main() {
 
 
         // Draw buttons
-        DrawRectangleRec(metroBtn, DARKGRAY);
+
         Texture2D icon = isPlaying ? pauseIcon : playIcon;
         float iconSize = 24;
         DrawTexturePro(
@@ -349,7 +503,6 @@ int main() {
             0.0f,
             WHITE
         );
-        DrawTextEx(font, "Metronome", {metroBtn.x + 15, metroBtn.y + 7}, 16, 1, WHITE);
 
         // Handle button clicks
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
@@ -389,3 +542,4 @@ int main() {
     CloseWindow();
     return 0;
 }
+
