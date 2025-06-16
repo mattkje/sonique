@@ -40,6 +40,12 @@ struct PianoKey {
     std::string label;
 };
 
+struct SongInfo {
+    std::string midiFile;
+    std::string displayName;
+    std::string artist;
+};
+
 std::string GetResourcePath(const std::string &filename) {
     CFBundleRef mainBundle = CFBundleGetMainBundle();
     CFURLRef resourcesURL = CFBundleCopyResourcesDirectoryURL(mainBundle);
@@ -253,17 +259,19 @@ void DrawPianoKeys(const std::vector<PianoKey> &keys, std::vector<bool> &keyWasP
 
 // This methods manually reads the MIDI file to find the initial tempo in BPM.
 // Yes... this is kinda hacky, but it works for most MIDI files.
-int GetMidiInitialTempoBPM(const std::string& midiPath) {
+int GetMidiInitialTempoBPM(const std::string &midiPath) {
     std::ifstream file(midiPath, std::ios::binary);
     if (!file) return -1;
     unsigned char buf[4];
-    while (file.read((char*)buf, 1)) {
-        if (buf[0] == 0xFF) { // Meta event
-            file.read((char*)buf, 1);
-            if (buf[0] == 0x51) { // Set Tempo
-                file.read((char*)buf, 1); // length (should be 3)
+    while (file.read((char *) buf, 1)) {
+        if (buf[0] == 0xFF) {
+            // Meta event
+            file.read((char *) buf, 1);
+            if (buf[0] == 0x51) {
+                // Set Tempo
+                file.read((char *) buf, 1); // length (should be 3)
                 if (buf[0] == 3) {
-                    file.read((char*)buf, 3);
+                    file.read((char *) buf, 3);
                     int mpqn = (buf[0] << 16) | (buf[1] << 8) | buf[2];
                     if (mpqn > 0) return static_cast<int>(60000000.0 / mpqn);
                 }
@@ -290,17 +298,59 @@ int main() {
         fluid_synth_program_select(synth, i, general, 0, 0);
     }
 
-    std::vector<std::string> loadedMidiFiles = {
-        GetResourcePath("assets/cstnd.mid"),
-        GetResourcePath("assets/makebelieve.mid"),
-        GetResourcePath("assets/peacherinerag.mid"),
-        GetResourcePath("assets/testSong.mid"),
-        GetResourcePath("assets/hold.mid")
-    };
+    namespace fs = std::filesystem;
+
+    std::vector<std::string> loadedMidiFiles;
+    std::string midiDir = std::string(getenv("HOME")) + "/Documents/Sonique/midi";
+
+    for (const auto &entry: fs::directory_iterator(midiDir)) {
+        if (entry.is_regular_file()) {
+            std::string path = entry.path().string();
+            if (path.size() >= 4 &&
+                (path.substr(path.size() - 4) == ".mid" || path.substr(path.size() - 4) == ".MID")) {
+                loadedMidiFiles.push_back(path);
+            }
+        }
+    }
     amountOfSongs = loadedMidiFiles.size();
 
+    std::vector<SongInfo> songInfos;
+    std::ifstream infoFile(std::string(getenv("HOME")) + "/Documents/Sonique/songfile");
+    std::string line;
+    while (std::getline(infoFile, line)) {
+        size_t first = line.find(',');
+        size_t second = line.find(',', first + 1);
+        if (first != std::string::npos && second != std::string::npos) {
+            SongInfo info;
+            info.midiFile = line.substr(0, first);
+            info.displayName = line.substr(first + 1, second - first - 1);
+            info.artist = line.substr(second + 1);
+            songInfos.push_back(info);
+        }
+    }
+    infoFile.close();
+
+    // Map loadedMidiFiles to songInfos
+    std::vector<SongInfo> loadedSongInfos;
+    for (const auto &midiPath: loadedMidiFiles) {
+        std::string midiFile = midiPath.substr(midiPath.find_last_of('/') + 1);
+        auto it = std::find_if(songInfos.begin(), songInfos.end(), [&](const SongInfo &s) {
+            return s.midiFile == midiFile;
+        });
+        if (it != songInfos.end()) {
+            loadedSongInfos.push_back(*it);
+        } else {
+            loadedSongInfos.push_back({midiFile, midiFile, "Unknown"});
+        }
+    }
+
+    if (loadedMidiFiles.empty()) {
+        std::cerr << "No MIDI files found in directory: " << midiDir << std::endl;
+        return 1; // Exit the app gracefully
+    }
+
     std::vector<int> midiBpms;
-    for (const auto& path : loadedMidiFiles) {
+    for (const auto &path: loadedMidiFiles) {
         int bpm = GetMidiInitialTempoBPM(path);
         midiBpms.push_back(bpm > 0 ? bpm : 120); // fallback to 120 if not found
     }
@@ -416,58 +466,6 @@ int main() {
             }
         }
 
-        // Draw dropdown
-DrawRectangleRec(dropdownBox, DARKGRAY);
-DrawTextEx(font, loadedMidiFiles[currentSongIndex].substr(loadedMidiFiles[currentSongIndex].find_last_of('/') + 1).c_str(),
-           {dropdownX + 10, dropdownY + 6}, 16, 1, YELLOW);
-DrawTriangle(
-    Vector2{dropdownX + dropdownWidth - 20, dropdownY + 12},
-    Vector2{dropdownX + dropdownWidth - 10, dropdownY + 12},
-    Vector2{dropdownX + dropdownWidth - 15, dropdownY + 22},
-    BLACK
-);
-
-// Handle dropdown click
-if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-    Vector2 mouse = GetMousePosition();
-    if (CheckCollisionPointRec(mouse, dropdownBox)) {
-        dropdownOpen = !dropdownOpen;
-    } else if (dropdownOpen) {
-        // Check if a song is clicked
-        for (int i = 0; i < amountOfSongs; ++i) {
-            Rectangle itemRect = {dropdownX, dropdownY + dropdownHeight + i * dropdownHeight, dropdownWidth, dropdownHeight};
-            if (CheckCollisionPointRec(mouse, itemRect)) {
-                if (currentSongIndex != i) {
-                    currentSongIndex = i;
-                    // Reload MIDI
-                    fluid_player_stop(player);
-                    player = new_fluid_player(synth);
-                    fluid_player_add(player, loadedMidiFiles[currentSongIndex].c_str());
-                    fluid_player_set_playback_callback(player, midi_event_handler, synth);
-                    tempo = midiBpms[currentSongIndex];
-                    fluid_player_set_tempo(player, FLUID_PLAYER_TEMPO_EXTERNAL_BPM, tempo);
-                    isPlaying = false;
-                }
-                dropdownOpen = false;
-            }
-        }
-        // Click outside closes dropdown
-        if (!CheckCollisionPointRec(mouse, {dropdownX, dropdownY + dropdownHeight, dropdownWidth, dropdownHeight * amountOfSongs})) {
-            dropdownOpen = false;
-        }
-    }
-}
-
-// Draw dropdown items if open
-if (dropdownOpen) {
-    for (int i = 0; i < amountOfSongs; ++i) {
-        Rectangle itemRect = {dropdownX, dropdownY + dropdownHeight + i * dropdownHeight, dropdownWidth, dropdownHeight};
-        DrawRectangleRec(itemRect, (i == currentSongIndex) ? GRAY : LIGHTGRAY);
-        DrawTextEx(font, loadedMidiFiles[i].substr(loadedMidiFiles[i].find_last_of('/') + 1).c_str(),
-                   {dropdownX + 10, itemRect.y + 6}, 16, 1, BLACK);
-    }
-}
-
         // Progress Bar
         float progressBarWidth = windowWidth;
         float progressBarHeight = 30;
@@ -486,6 +484,65 @@ if (dropdownOpen) {
             {progressBarX, progressBarY, (float) (progress * progressBarWidth), progressBarHeight},
             SKYBLUE
         );
+
+        // Draw dropdown
+        DrawRectangleRec(dropdownBox, DARKGRAY);
+        DrawTextEx(font, loadedSongInfos[currentSongIndex].displayName.c_str(),
+                   {dropdownX + 10, dropdownY + 6}, 16, 1, YELLOW);
+        DrawTriangle(
+            Vector2{dropdownX + dropdownWidth - 20, dropdownY + 12},
+            Vector2{dropdownX + dropdownWidth - 10, dropdownY + 12},
+            Vector2{dropdownX + dropdownWidth - 15, dropdownY + 22},
+            BLACK
+        );
+
+        // Handle dropdown click
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+            Vector2 mouse = GetMousePosition();
+            if (CheckCollisionPointRec(mouse, dropdownBox)) {
+                dropdownOpen = !dropdownOpen;
+            } else if (dropdownOpen) {
+                // Check if a song is clicked
+                for (int i = 0; i < amountOfSongs; ++i) {
+                    Rectangle itemRect = {
+                        dropdownX, dropdownY + dropdownHeight + i * dropdownHeight, dropdownWidth, dropdownHeight
+                    };
+                    if (CheckCollisionPointRec(mouse, itemRect)) {
+                        if (currentSongIndex != i) {
+                            currentSongIndex = i;
+                            // Reload MIDI
+                            fluid_player_stop(player);
+                            player = new_fluid_player(synth);
+                            fluid_player_add(player, loadedMidiFiles[currentSongIndex].c_str());
+                            fluid_player_set_playback_callback(player, midi_event_handler, synth);
+                            tempo = midiBpms[currentSongIndex];
+                            fluid_player_set_tempo(player, FLUID_PLAYER_TEMPO_EXTERNAL_BPM, tempo);
+                            isPlaying = false;
+                        }
+                        dropdownOpen = false;
+                    }
+                }
+                // Click outside closes dropdown
+                if (!CheckCollisionPointRec(mouse, {
+                                                dropdownX, dropdownY + dropdownHeight, dropdownWidth,
+                                                dropdownHeight * amountOfSongs
+                                            })) {
+                    dropdownOpen = false;
+                }
+            }
+        }
+
+        // Draw dropdown items if open
+        if (dropdownOpen) {
+            for (int i = 0; i < amountOfSongs; ++i) {
+                Rectangle itemRect = {
+                    dropdownX, dropdownY + dropdownHeight + i * dropdownHeight, dropdownWidth, dropdownHeight
+                };
+                DrawRectangleRec(itemRect, (i == currentSongIndex) ? GRAY : LIGHTGRAY);
+                std::string display = loadedSongInfos[i].displayName + " - " + loadedSongInfos[i].artist;
+                DrawTextEx(font, display.c_str(), {dropdownX + 10, itemRect.y + 6}, 16, 1, YELLOW);
+            }
+        }
 
 
         // Draw buttons
@@ -542,4 +599,3 @@ if (dropdownOpen) {
     CloseWindow();
     return 0;
 }
-
