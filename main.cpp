@@ -288,20 +288,42 @@ int main() {
     fluid_synth_t *synth = new_fluid_synth(settings);
     fluid_audio_driver_t *adriver = new_fluid_audio_driver(settings, synth);
 
-    // Load your piano SoundFont
-    int general = fluid_synth_sfload(synth, GetResourcePath("SoundFonts/general3.sf2").c_str(), 1);
-
-
-    // All other channels: general SoundFont
-    for (int i = 1; i < 16; ++i) {
-        if (i == 9) continue; // already set for drums
-        fluid_synth_program_select(synth, i, general, 0, 0);
+    std::string soundFontDir = std::string(getenv("HOME")) + "/Documents/Sonique/soundFonts";
+    // Create the SoundFont directory if it doesn't exist
+    if (!std::filesystem::exists(soundFontDir)) {
+        std::filesystem::create_directories(soundFontDir);
+        std::cerr << "Created SoundFont directory at: " << soundFontDir << std::endl;
+        return 0; // Exit the app gracefully
     }
 
     namespace fs = std::filesystem;
+    std::vector<std::string> loadedSoundFonts;
+    for (const auto &entry : fs::directory_iterator(soundFontDir)) {
+        if (entry.is_regular_file()) {
+            std::string path = entry.path().string();
+            if (path.size() >= 4 &&
+                (path.substr(path.size() - 4) == ".sf2" || path.substr(path.size() - 4) == ".SF2")) {
+                loadedSoundFonts.push_back(path);
+                }
+        }
+    }
+
+    // Load the soundfont with default name
+    int general = fluid_synth_sfload(synth, (soundFontDir + "/default.sf2").c_str(), 1);
+
+    for (int i = 1; i < 16; ++i) {
+        if (i == 9) continue;
+        fluid_synth_program_select(synth, i, general, 0, 0);
+    }
 
     std::vector<std::string> loadedMidiFiles;
     std::string midiDir = std::string(getenv("HOME")) + "/Documents/Sonique/midi";
+    // Create the MIDI directory if it doesn't exist
+    if (!fs::exists(midiDir)) {
+        fs::create_directories(midiDir);
+        std::cerr << "Created MIDI directory at: " << midiDir << std::endl;
+        return 0; // Exit the app gracefully
+    }
 
     for (const auto &entry: fs::directory_iterator(midiDir)) {
         if (entry.is_regular_file()) {
@@ -315,7 +337,16 @@ int main() {
     amountOfSongs = loadedMidiFiles.size();
 
     std::vector<SongInfo> songInfos;
-    std::ifstream infoFile(std::string(getenv("HOME")) + "/Documents/Sonique/songfile");
+    std::ifstream infoFile(std::string(getenv("HOME")) + "/Documents/Sonique/songinfo");
+    // Create the songinfo file if it doesn't exist
+    if (!infoFile.is_open()) {
+        std::ofstream createInfoFile(std::string(getenv("HOME")) + "/Documents/Sonique/songinfo");
+        createInfoFile << "midi_file,display_name,artist\n"; // header
+        createInfoFile.close();
+        std::cerr << "Created songinfo file at: " << getenv("HOME") << "/Documents/Sonique/songinfo" << std::endl;
+        return 0;
+    }
+
     std::string line;
     while (std::getline(infoFile, line)) {
         size_t first = line.find(',');
@@ -488,7 +519,7 @@ int main() {
         // Draw dropdown
         DrawRectangleRec(dropdownBox, DARKGRAY);
         DrawTextEx(font, loadedSongInfos[currentSongIndex].displayName.c_str(),
-                   {dropdownX + 10, dropdownY + 6}, 16, 1, YELLOW);
+                   {dropdownX + 10, dropdownY + 6}, 16, 1, WHITE);
         DrawTriangle(
             Vector2{dropdownX + dropdownWidth - 20, dropdownY + 12},
             Vector2{dropdownX + dropdownWidth - 10, dropdownY + 12},
@@ -538,9 +569,9 @@ int main() {
                 Rectangle itemRect = {
                     dropdownX, dropdownY + dropdownHeight + i * dropdownHeight, dropdownWidth, dropdownHeight
                 };
-                DrawRectangleRec(itemRect, (i == currentSongIndex) ? GRAY : LIGHTGRAY);
+                DrawRectangleRec(itemRect, (i == currentSongIndex) ? GRAY : DARKGRAY);
                 std::string display = loadedSongInfos[i].displayName + " - " + loadedSongInfos[i].artist;
-                DrawTextEx(font, display.c_str(), {dropdownX + 10, itemRect.y + 6}, 16, 1, YELLOW);
+                DrawTextEx(font, display.c_str(), {dropdownX + 10, itemRect.y + 6}, 16, 1, WHITE);
             }
         }
 
