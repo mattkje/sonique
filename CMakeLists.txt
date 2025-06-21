@@ -10,14 +10,30 @@ set(CMAKE_INCLUDE_PATH "/opt/homebrew/include")
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(FLUIDSYNTH REQUIRED fluidsynth)
 
-set(MACOSX_BUNDLE_ICON_FILE appicon.icns)
-set_source_files_properties(appicon.icns PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
+set(MACOSX_BUNDLE_ICON_FILE appicon.png)
+set_source_files_properties(appicon.png PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
 
-add_executable(Sonique MACOSX_BUNDLE main.cpp appicon.icns)
+add_executable(Sonique MACOSX_BUNDLE main.cpp appicon.png
+        PianoKey.cpp
+        PianoKey.h
+        SongInfo.cpp
+        SongInfo.h
+        MidiUtils.cpp
+        MidiUtils.h
+        SoundFontUtils.cpp
+        SoundFontUtils.h
+        ui/PianoPage.cpp
+        ui/PianoPage.h
+        FileUtils.cpp
+        FileUtils.h
+        ui/MainMenuPage.cpp
+        ui/MainMenuPage.h
+)
 set_target_properties(Sonique PROPERTIES MACOSX_BUNDLE TRUE)
 
 file(COPY assets DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/Sonique.app/Contents/Resources)
-file(COPY Neutraface.otf DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/Sonique.app/Contents/Resources)
+file(COPY assets/fonts/Neutraface.otf DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/Sonique.app/Contents/Resources)
+file(COPY assets/fonts/Lexend.ttf DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/Sonique.app/Contents/Resources)
 
 target_include_directories(Sonique PRIVATE ${FLUIDSYNTH_INCLUDE_DIRS})
 target_link_libraries(Sonique PRIVATE raylib ${FLUIDSYNTH_LIBRARIES} ${FLUIDSYNTH_LDFLAGS} "-framework CoreFoundation")
