@@ -14,18 +14,18 @@ set(MACOSX_BUNDLE_ICON_FILE appicon.png)
 set_source_files_properties(appicon.png PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
 
 add_executable(Sonique MACOSX_BUNDLE main.cpp appicon.png
-        PianoKey.cpp
-        PianoKey.h
-        SongInfo.cpp
-        SongInfo.h
-        MidiUtils.cpp
-        MidiUtils.h
-        SoundFontUtils.cpp
-        SoundFontUtils.h
+        ui/PianoKey.cpp
+        ui/PianoKey.h
+        utils/SongInfo.cpp
+        utils/SongInfo.h
+        utils/MidiUtils.cpp
+        utils/MidiUtils.h
+        utils/SoundFontUtils.cpp
+        utils/SoundFontUtils.h
         ui/PianoPage.cpp
         ui/PianoPage.h
-        FileUtils.cpp
-        FileUtils.h
+        utils/FileUtils.cpp
+        utils/FileUtils.h
         ui/MainMenuPage.cpp
         ui/MainMenuPage.h
 )

@@ -4,8 +4,8 @@
 #include <string>
 #include <raylib.h>
 #include <fluidsynth.h>
-#include "../SongInfo.h"
-#include "../PianoKey.h"
+#include "../utils/SongInfo.h"
+#include "PianoKey.h"
 
 class PianoPage {
 public:

@@ -1,0 +1,26 @@
+# macOS
+.DS_Store
+
+# JetBrains IDEs (CLion, IntelliJ, etc.)
+.idea/
+*.iml
+
+# Build artifacts
+build/
+cmake-build-*/
+out/
+*.o
+*.obj
+*.exe
+*.log
+
+# CMake
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# User-specific files
+*.user
+*.swp
+*.swo

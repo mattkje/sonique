@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="logo.png" alt="Sonique Logo" width="180"/>
+  <img src="appicon.png" alt="Sonique Logo" width="180"/>
 </p>
 
 <h1 align="center">Sonique</h1>

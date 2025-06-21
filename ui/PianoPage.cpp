@@ -1,6 +1,6 @@
 #include "PianoPage.h"
-#include "../MidiUtils.h"
-#include "../FileUtils.h"
+#include "../utils/MidiUtils.h"
+#include "../utils/FileUtils.h"
 #include <iostream>
 
 PianoPage::PianoPage(

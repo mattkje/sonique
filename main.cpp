@@ -11,10 +11,10 @@
 #include <CoreFoundation/CoreFoundation.h>
 #include <filesystem>
 
-#include "MidiUtils.h"
-#include "PianoKey.h"
-#include "SongInfo.h"
-#include "SoundFontUtils.h"
+#include "utils/MidiUtils.h"
+#include "ui/PianoKey.h"
+#include "utils/SongInfo.h"
+#include "utils/SoundFontUtils.h"
 #include "ui/PianoPage.h"
 #include "ui/MainMenuPage.h"
 
