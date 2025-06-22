@@ -13,57 +13,68 @@ Designed for learners, performers, and music lovers, it offers a clean and respo
 
 ## 🚧 Project Status
 
-**Current Phase:** MVP Done – Ongoing Iteration
+**Current Phase:** MVP Complete – Iterating
 
-A first working version (MVP) is now kinda finished! It includes core functionality like real-time MIDI playback, fluid note animations, and a clean UI.
+The first working version (MVP) is ready! It includes:
 
-I'm now focused on improving stability, adding quality-of-life features, and expanding customization options.
+* Real-time MIDI playback
+* Smooth falling note animations
+* A clean and functional user interface
+
+I'm currently focused on improving stability, adding quality-of-life features, and expanding customization options.
 
 ---
 
-## 🛠 Technologies Used
+## 🛠️ Technologies
 
 * **C++** – Core programming language
 * **Raylib** – Lightweight rendering and game loop library
-* **RtMidi** – Cross-platform MIDI input/output
+* **RtMidi** – Cross-platform MIDI I/O
 * **FluidSynth** – Software synthesizer for high-quality MIDI playback
 
 ---
 
-## 🖥 Planned Platforms
+## 🖥️ Platforms
 
-Platform support is still to be determined.
-Since development is currently happening on macOS, that will be the initial supported platform. I also aim to add Windows support, with Linux as a potential target depending on demand and available time.
-  
+Initial development is on **macOS**, which will be the first supported platform.
+I also plan to support **Windows**, with potential **Linux** support depending on demand and time.
+
 ---
 
 ## 🎯 Why Sonique?
 
-Most existing MIDI visualizers are **expensive**, **closed-source**, or **overcomplicated**.
-As a solo dev, I want to create a free, open-source alternative for everyone to use
-Music should be approachable, and tools like this shouldn’t be behind a paywall.
+Most MIDI visualizers are:
+
+* Expensive
+* Closed-source
+* Overcomplicated
+
+**Sonique** aims to be a free, open-source alternative that's easy to use and accessible to everyone.
 
 ---
-## 🔽 Download Preview
 
-> ⚠️ **Note:** This preview build is **unstable** and intended for testing purposes only. Expect bugs and incomplete features.
+## 🔽 Preview Download
 
-Grab the latest preview build [here](https://github.com/mattkje/sonique/releases/tag/0.1.0-preview).
+> ⚠️ **Unstable Preview Build:** For testing only. Expect bugs and missing features.
+
+Download the latest build:
+[➡️ Sonique v0.1.0-preview](https://github.com/mattkje/sonique/releases/tag/0.1.0-preview)
 
 ---
 
 ## 🧩 Coming Soon
 
-Planned features include:
+Planned features:
 
 * Multiple MIDI input/output device support
 * Customizable visual styles
-* Playback controls (looping, seek bar)
-* Recording and export tools
+* Playback controls (looping, seek bar, etc.)
+* Recording and export options
 
 ---
 
-## 🙌 Support & Contributions
-As this is a solo project still taking shape, I don’t have a concrete roadmap or contribution plan just yet.
-That said, suggestions, ideas, or even casual feedback are always welcome — feel free to open an issue or start a discussion if something comes to mind
+## 🙌 Feedback & Contributions
 
+This is a solo project and still evolving — there's no strict roadmap or contribution guide yet.
+That said, **ideas, suggestions, and feedback are always welcome**!
+Feel free to open an issue or start a discussion on GitHub.
