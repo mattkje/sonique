@@ -28,6 +28,8 @@ add_executable(Sonique MACOSX_BUNDLE main.cpp appicon.png
         utils/FileUtils.h
         ui/MainMenuPage.cpp
         ui/MainMenuPage.h
+        MidiLogic/MidiBlock.cpp
+        MidiLogic/MidiBlock.h
 )
 set_target_properties(Sonique PROPERTIES MACOSX_BUNDLE TRUE)
 

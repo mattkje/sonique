@@ -4,7 +4,7 @@
 #include "SongInfo.h"
 #include <fstream>
 
-std::vector<SongInfo> LoadSongInfos(const std::string& infoFilePath) {
+std::vector<SongInfo> LoadSongInfos(const std::string &infoFilePath) {
     std::vector<SongInfo> songInfos;
     std::ifstream infoFile(infoFilePath);
     std::string line;

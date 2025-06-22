@@ -89,6 +89,11 @@ int main() {
     }
 
     // --- MIDI player setup ---
+    for (int ch = 0; ch < 16; ++ch) {
+        for (int k = 0; k < 88; ++k) {
+            midiKeyStates[ch][k] = false;
+        }
+    }
     int currentSongIndex = 0;
     fluid_player_t *player = new_fluid_player(synth);
     fluid_player_add(player, loadedMidiFiles[currentSongIndex].c_str());
@@ -97,8 +102,6 @@ int main() {
     int tempo = midiBpms[currentSongIndex];
     fluid_player_set_tempo(player, FLUID_PLAYER_TEMPO_EXTERNAL_BPM, tempo);
 
-    // --- Key states ---
-    std::vector<std::vector<bool> > midiKeyStates(16, std::vector<bool>(NUM_TOTAL_KEYS, false));
 
     // --- Window and UI ---
     const int initialWidth = 1220;

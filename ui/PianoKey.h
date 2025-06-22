@@ -38,3 +38,5 @@ void DrawPianoKeys(
     Texture2D blackKeyPressed,
     const std::vector<std::vector<bool>>& midiKeyStates
 );
+
+void ResetKeyPressedStates(std::vector<bool>& keyWasPressed);

@@ -1,31 +1,38 @@
 #include "PianoPage.h"
 #include "../utils/MidiUtils.h"
 #include "../utils/FileUtils.h"
+
 #include <iostream>
 
+extern std::vector<MidiBlock> midiBlocks;
+extern int ticksPerQuarter;
+
 PianoPage::PianoPage(
-    fluid_synth_t* synth,
-    fluid_player_t* player,
-    std::vector<std::string>& loadedMidiFiles,
-    std::vector<SongInfo>& loadedSongInfos,
-    std::vector<int>& midiBpms,
-    std::vector<std::vector<bool>>& midiKeyStates
+    fluid_synth_t *synth,
+    fluid_player_t *player,
+    std::vector<std::string> &loadedMidiFiles,
+    std::vector<SongInfo> &loadedSongInfos,
+    std::vector<int> &midiBpms,
+    std::vector<std::vector<bool> > &midiKeyStates
 )
     : synth(synth),
       player(player),
       loadedMidiFiles(loadedMidiFiles),
       loadedSongInfos(loadedSongInfos),
       midiBpms(midiBpms),
-      midiKeyStates(midiKeyStates)
-{
+      midiKeyStates(midiKeyStates) {
     tempo = midiBpms.empty() ? 120 : midiBpms[0];
-    currentSongIndex = 0;
+    currentSongIndex = -1;
     amountOfSongs = static_cast<int>(loadedMidiFiles.size());
     dropdownOpen = false;
     isPlaying = false;
-    dropdownX = 20; dropdownY = 10; dropdownWidth = 260; dropdownHeight = 30;
+    dropdownX = 20;
+    dropdownY = 10;
+    dropdownWidth = 260;
+    dropdownHeight = 30;
     dropdownBox = {dropdownX, dropdownY, dropdownWidth, dropdownHeight};
     LoadResources();
+    ReloadSong(1);
 }
 
 PianoPage::~PianoPage() {
@@ -34,7 +41,7 @@ PianoPage::~PianoPage() {
 
 void PianoPage::LoadResources() {
     font = LoadFont(GetResourcePath("Lexend.ttf").c_str());
-    background = LoadTexture(GetResourcePath("assets/background.png").c_str());
+    background = LoadTexture(GetResourcePath("assets/background2.png").c_str());
     whiteKey = LoadTexture(GetResourcePath("assets/whiteKey.png").c_str());
     whiteKeyPressed = LoadTexture(GetResourcePath("assets/whiteKeyPressed.png").c_str());
     blackKey = LoadTexture(GetResourcePath("assets/black-key-raised.png").c_str());
@@ -69,16 +76,58 @@ void PianoPage::Draw() {
 
     DrawTexturePro(
         background,
-        Rectangle{0, 0, (float)background.width, (float)background.height},
-        Rectangle{0, 0, (float)windowWidth, (float)windowHeight},
+        Rectangle{0, 0, (float) background.width, (float) background.height},
+        Rectangle{0, 0, (float) windowWidth, (float) windowHeight},
         Vector2{0, 0},
         0.0f,
         WHITE
     );
 
+    // Draw falling MIDI blocks
+   double currentTime = (static_cast<double>(fluid_player_get_current_tick(player)) / static_cast<double>(ticksPerQuarter)) * (60.0 / tempo);
+
+    for (const auto &block: midiBlocks) {
+        int keyIdx = -1;
+        for (int i = 0; i < keys.size(); ++i) {
+            if (keys[i].midiNumber == block.key) {
+                keyIdx = i;
+                break;
+            }
+        }
+        if (keyIdx < 0) continue;
+        if (keyIdx < 0 || keyIdx >= keys.size()) continue;
+
+        float blockX = keys[keyIdx].rect.x;
+        float blockWidth = keys[keyIdx].rect.width;
+        float blockY = block.getY(keyboardY, fallSpeed, currentTime);
+        float blockHeight = block.getHeight(fallSpeed);
+
+        // C++
+        // Assume keyIdx is valid and keys[keyIdx].isBlack exists
+        float r = block.color.r;
+        float g = block.color.g;
+        float b = block.color.b;
+        if (keys[keyIdx].isBlack) {
+            r *= 0.6f;
+            g *= 0.6f;
+            b *= 0.6f;
+        }
+        DrawRectangleRounded(
+            Rectangle{blockX, blockY, blockWidth, blockHeight},
+            0.4f,
+            8,
+            Color{
+                static_cast<unsigned char>(r * 255),
+                static_cast<unsigned char>(g * 255),
+                static_cast<unsigned char>(b * 255),
+                static_cast<unsigned char>(block.color.a * 255)
+            }
+        );
+    }
+
     // Toolbar
     DrawRectangle(0, 0, windowWidth, 50, BLACK);
-    DrawLineEx({0, 50}, {(float)windowWidth, 50}, 1.0f, DARKGRAY);
+    DrawLineEx({0, 50}, {(float) windowWidth, 50}, 1.0f, DARKGRAY);
 
     // Tempo box
     DrawRectangleRec({dropdownX + 290, dropdownY, 90, 30}, DARKGRAY);
@@ -104,14 +153,40 @@ void PianoPage::Draw() {
         BLACK
     );
 
+    // Fall Speed box (placed next to Tempo box)
+    float fallSpeedBoxX = dropdownX + 390.0f; // adjust as needed for spacing
+    DrawRectangleRec({fallSpeedBoxX, dropdownY, 90.0f, 30.0f}, DARKGRAY);
+    std::string fallSpeedStr = std::to_string(static_cast<int>(fallSpeed));
+    Vector2 fallSpeedTextSize = MeasureTextEx(font, fallSpeedStr.c_str(), 16, 1);
+    DrawTextEx(font, fallSpeedStr.c_str(), {fallSpeedBoxX + 45.0f - fallSpeedTextSize.x / 2, dropdownY + 6.0f}, 16, 1,
+               YELLOW);
+
+    // Up/Down arrows for fallSpeed
+    Rectangle fallUpBtn = {fallSpeedBoxX + 72.0f, dropdownY + 2.0f, 24.0f, 12.0f};
+    Rectangle fallDownBtn = {fallSpeedBoxX + 72.0f, dropdownY + 16.0f, 24.0f, 12.0f};
+    DrawRectangleRec(fallUpBtn, GRAY);
+    DrawTriangle(
+        Vector2{fallUpBtn.x + 12.0f, fallUpBtn.y + 3.0f},
+        Vector2{fallUpBtn.x + 5.0f, fallUpBtn.y + 10.0f},
+        Vector2{fallUpBtn.x + 19.0f, fallUpBtn.y + 10.0f},
+        BLACK
+    );
+    DrawRectangleRec(fallDownBtn, GRAY);
+    DrawTriangle(
+        Vector2{fallDownBtn.x + 12.0f, fallDownBtn.y + 9.0f},
+        Vector2{fallDownBtn.x + 5.0f, fallDownBtn.y + 2.0f},
+        Vector2{fallDownBtn.x + 19.0f, fallDownBtn.y + 2.0f},
+        BLACK
+    );
+
     // Progress bar
-    float progressBarY = 51;
-    DrawRectangleRec({0, progressBarY, (float)windowWidth, 30}, GRAY);
-    DrawLineEx({0, 82}, {(float)windowWidth, 81}, 1.0f, DARKGRAY);
+    float progressBarY = 50;
+    DrawRectangleRec({0, progressBarY, (float) windowWidth, 30}, GRAY);
+    DrawLineEx({0, 82}, {(float) windowWidth, 81}, 1.0f, DARKGRAY);
     long total_ticks = fluid_player_get_total_ticks(player);
     long current_tick = fluid_player_get_current_tick(player);
-    double progress = (double)current_tick / (double)total_ticks;
-    DrawRectangleRec({0, progressBarY, (float)(progress * windowWidth), 30}, SKYBLUE);
+    double progress = (double) current_tick / (double) total_ticks;
+    DrawRectangleRec({0, progressBarY, (float) (progress * windowWidth), 30}, Color{165, 91, 254, 255});
 
     // Dropdown
     DrawRectangleRec(dropdownBox, DARKGRAY);
@@ -142,7 +217,7 @@ void PianoPage::Draw() {
     float iconSize = 24;
     DrawTexturePro(
         icon,
-        Rectangle{0, 0, (float)icon.width, (float)icon.height},
+        Rectangle{0, 0, (float) icon.width, (float) icon.height},
         Rectangle{
             playBtn.x + (playBtn.width - iconSize) / 2, playBtn.y + (playBtn.height - iconSize) / 2, iconSize, iconSize
         },
@@ -151,9 +226,11 @@ void PianoPage::Draw() {
         WHITE
     );
 
+
     // Piano keys
-    DrawLineEx({0, (float)(keyboardY + 1)}, {(float)windowWidth, (float)(keyboardY + 1)}, 3.0f, RED);
-    DrawPianoKeys(keys, keyWasPressed, synth, font, true, whiteKey, whiteKeyPressed, blackKey, blackKeyPressed, midiKeyStates);
+    DrawLineEx({0, (float) (keyboardY + 1)}, {(float) windowWidth, (float) (keyboardY + 1)}, 3.0f, RED);
+    DrawPianoKeys(keys, keyWasPressed, synth, font, true, whiteKey, whiteKeyPressed, blackKey, blackKeyPressed,
+                  midiKeyStates);
 
     EndDrawing();
 }
@@ -191,8 +268,9 @@ void PianoPage::HandleInput() {
                 }
             }
             if (!CheckCollisionPointRec(mouse, {
-                    dropdownX, dropdownY + dropdownHeight, dropdownWidth, dropdownHeight * amountOfSongs
-                })) {
+                                            dropdownX, dropdownY + dropdownHeight, dropdownWidth,
+                                            dropdownHeight * amountOfSongs
+                                        })) {
                 dropdownOpen = false;
             }
         }
@@ -213,11 +291,24 @@ void PianoPage::HandleInput() {
             }
         }
     }
+
+    // FallSpeed up/down
+    float fallSpeedBoxX = dropdownX + 390.0f;
+    Rectangle fallUpBtn = {fallSpeedBoxX + 72.0f, dropdownY + 2.0f, 24.0f, 12.0f};
+    Rectangle fallDownBtn = {fallSpeedBoxX + 72.0f, dropdownY + 16.0f, 24.0f, 12.0f};
+    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+        if (CheckCollisionPointRec(mouse, fallUpBtn)) {
+            fallSpeed += 10.0f;
+        } else if (CheckCollisionPointRec(mouse, fallDownBtn)) {
+            if (fallSpeed > 10.0f) fallSpeed -= 10.0f;
+        }
+    }
 }
 
 void PianoPage::Update() {
     // No per-frame logic needed for now, but could update progress, animations, etc.
 }
+
 
 void PianoPage::ReloadSong(int songIndex) {
     if (currentSongIndex == songIndex) return;
@@ -229,4 +320,11 @@ void PianoPage::ReloadSong(int songIndex) {
     tempo = midiBpms[currentSongIndex];
     fluid_player_set_tempo(player, FLUID_PLAYER_TEMPO_EXTERNAL_BPM, tempo);
     isPlaying = false;
+
+    LoadMidiBlocks(loadedMidiFiles[currentSongIndex]);
+    ticksPerQuarter = GetTicksPerQuarterFromMidi(loadedMidiFiles[currentSongIndex]);
+
+    // Reset all key pressed states
+    keyWasPressed.clear();
+    ResetKeyPressedStates(keyWasPressed);
 }

@@ -187,3 +187,9 @@ void DrawPianoKeys(
         }
     }
 }
+
+void ResetKeyPressedStates(std::vector<bool>& keyWasPressed) {
+    for (size_t i = 0; i < keyWasPressed.size(); ++i) {
+        keyWasPressed[i] = false;
+    }
+}

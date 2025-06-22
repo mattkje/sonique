@@ -5,6 +5,7 @@
 #include <raylib.h>
 #include <fluidsynth.h>
 #include "../utils/SongInfo.h"
+#include "../MidiLogic/MidiBlock.h"
 #include "PianoKey.h"
 
 class PianoPage {
@@ -34,6 +35,9 @@ private:
     int amountOfSongs;
     bool dropdownOpen;
     bool isPlaying;
+
+    // Falling blocks
+    int fallSpeed = 200;
 
     // UI geometry
     float dropdownX, dropdownY, dropdownWidth, dropdownHeight;
