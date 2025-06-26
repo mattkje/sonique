@@ -11,11 +11,11 @@ Designed for learners, performers, and music lovers, it offers a clean and respo
 
 ---
 
-## 🚧 Project Status
+## Status
 
 **Current Phase:** MVP Complete – Iterating
 
-The first working version (MVP) is ready! It includes:
+The first working version (MVP) is kinda ready:
 
 * Real-time MIDI playback
 * Smooth falling note animations
@@ -25,7 +25,7 @@ I'm currently focused on improving stability, adding quality-of-life features, a
 
 ---
 
-## 🛠️ Technologies
+## Technologies
 
 * **C++** – Core programming language
 * **Raylib** – Lightweight rendering and game loop library
@@ -41,19 +41,15 @@ I also plan to support **Windows**, with potential **Linux** support depending o
 
 ---
 
-## 🎯 Why Sonique?
+## Why Sonique?
 
-Most MIDI visualizers are:
+Most MIDI visualizers do have some kind of cost and may also be a bit overcomplicated for some people
 
-* Expensive
-* Closed-source
-* Overcomplicated
-
-**Sonique** aims to be a free, open-source alternative that's easy to use and accessible to everyone.
+**Sonique** is free, will always be free. It is also open-source.
 
 ---
 
-## 🔽 Preview Download
+## Preview Download
 
 > ⚠️ **Unstable Preview Build:** For testing only. Expect bugs and missing features.
 
@@ -62,9 +58,9 @@ Download the latest build:
 
 ---
 
-## 🧩 Coming Soon
+## Coming Soon
 
-Planned features:
+Planned features: (no guarantee)
 
 * Multiple MIDI input/output device support
 * Customizable visual styles
@@ -73,7 +69,7 @@ Planned features:
 
 ---
 
-## 🙌 Feedback & Contributions
+## Feedback & Contributions
 
 This is a solo project and still evolving — there's no strict roadmap or contribution guide yet.
 That said, **ideas, suggestions, and feedback are always welcome**!
