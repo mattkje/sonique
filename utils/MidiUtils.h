@@ -13,3 +13,5 @@ int GetMidiInitialTempoBPM(const std::string &midiPath);
 void LoadMidiBlocks(const std::string& midiFilePath);
 
 int GetTicksPerQuarterFromMidi(const std::string& midiPath);
+
+void SetChannelMute(fluid_synth_t* synth, int channel, bool mute);

@@ -179,6 +179,36 @@ void PianoPage::Draw() {
         BLACK
     );
 
+    // Channel dropdown button
+    float channelDropdownX = dropdownX + dropdownWidth + 500;
+    float channelDropdownWidth = 180;
+    float channelDropdownHeight = 30;
+    channelDropdownBox = {channelDropdownX, dropdownY, channelDropdownWidth, channelDropdownHeight};
+    DrawRectangleRec(channelDropdownBox, DARKGRAY);
+    DrawTextEx(font, "Channels", {channelDropdownX + 10, dropdownY + 6}, 16, 1, WHITE);
+    DrawTriangle(
+        Vector2{channelDropdownX + channelDropdownWidth - 20, dropdownY + 12},
+        Vector2{channelDropdownX + channelDropdownWidth - 10, dropdownY + 12},
+        Vector2{channelDropdownX + channelDropdownWidth - 15, dropdownY + 22},
+        BLACK
+    );
+
+    if (channelDropdownOpen) {
+        for (int ch = 0; ch < 16; ++ch) {
+            Rectangle itemRect = {
+                channelDropdownX, dropdownY + channelDropdownHeight + ch * channelDropdownHeight,
+                channelDropdownWidth, channelDropdownHeight
+            };
+            DrawRectangleRec(itemRect, channelMuteStates[ch] ? GRAY : DARKGRAY);
+            std::string label = "Channel " + std::to_string(ch + 1) + (channelMuteStates[ch] ? " (Muted)" : "");
+            DrawTextEx(font, label.c_str(), {channelDropdownX + 10, itemRect.y + 6}, 16, 1, WHITE);
+
+            // Mute toggle box
+            Rectangle muteBox = {itemRect.x + channelDropdownWidth - 40, itemRect.y + 6, 20, 20};
+            DrawRectangleRec(muteBox, channelMuteStates[ch] ? RED : LIGHTGRAY);
+        }
+    }
+
     // Progress bar
     float progressBarY = 50;
     DrawRectangleRec({0, progressBarY, (float) windowWidth, 30}, GRAY);
@@ -248,6 +278,33 @@ void PianoPage::HandleInput() {
         } else if (CheckCollisionPointRec(mouse, downBtn)) {
             if (tempo > 20) tempo -= 1;
             fluid_player_set_tempo(player, FLUID_PLAYER_TEMPO_EXTERNAL_BPM, tempo);
+        }
+    }
+
+    // Channel dropdown
+    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+        Vector2 mouse = GetMousePosition();
+        if (CheckCollisionPointRec(mouse, channelDropdownBox)) {
+            channelDropdownOpen = !channelDropdownOpen;
+        } else if (channelDropdownOpen) {
+            for (int ch = 0; ch < 16; ++ch) {
+                Rectangle itemRect = {
+                    channelDropdownBox.x, channelDropdownBox.y + channelDropdownBox.height + ch * channelDropdownBox.height,
+                    channelDropdownBox.width, channelDropdownBox.height
+                };
+                Rectangle muteBox = {itemRect.x + channelDropdownBox.width - 40, itemRect.y + 6, 20, 20};
+                if (CheckCollisionPointRec(mouse, muteBox)) {
+                    channelMuteStates[ch] = !channelMuteStates[ch];
+                    SetChannelMute(synth, ch, channelMuteStates[ch]);
+                }
+            }
+            // Close dropdown if click outside
+            if (!CheckCollisionPointRec(mouse, {
+                    channelDropdownBox.x, channelDropdownBox.y + channelDropdownBox.height,
+                    channelDropdownBox.width, channelDropdownBox.height * 16
+                })) {
+                channelDropdownOpen = false;
+                }
         }
     }
 

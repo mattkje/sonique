@@ -25,6 +25,13 @@ I'm currently focused on improving stability, adding quality-of-life features, a
 
 ---
 
+## Images
+
+![Screenshot 1](assets/screenshots/ss1.png)
+![Screenshot 1](assets/screenshots/ss2.png)
+
+---
+
 ## 🛠️ Technologies
 
 * **C++** – Core programming language

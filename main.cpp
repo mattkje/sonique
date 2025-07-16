@@ -60,7 +60,6 @@ int main() {
             }
         }
     }
-    int amountOfSongs = loadedMidiFiles.size();
 
     std::vector<SongInfo> songInfos = LoadSongInfos(std::string(getenv("HOME")) + "/Documents/Sonique/songinfo");
 
@@ -108,7 +107,7 @@ int main() {
     const int initialHeight = 800;
     InitWindow(initialWidth, initialHeight, "Sonique");
     SetWindowState(FLAG_WINDOW_RESIZABLE);
-    SetTargetFPS(60);
+
 
     AppPage currentPage = AppPage::MainMenu;
     PianoPage pianoPage(

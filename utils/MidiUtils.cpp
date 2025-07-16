@@ -5,7 +5,6 @@
 #include <vector>
 #include <map>
 #include <fstream>
-#include <cstdint>
 #include <iostream>
 
 #define NOTE_OFF 0x80
@@ -69,7 +68,11 @@ uint32_t readVarLen(std::ifstream &file) {
     return value;
 }
 
-// C++
+void SetChannelMute(fluid_synth_t* synth, int channel, bool mute) {
+    int volume = mute ? 0 : 127;
+    fluid_synth_cc(synth, channel, 7, volume);
+}
+
 void LoadMidiBlocks(const std::string &midiPath) {
     std::cout << "Loading MIDI blocks from: " << midiPath << std::endl;
     midiBlocks.clear();

@@ -50,6 +50,9 @@ private:
     std::vector<SongInfo>& loadedSongInfos;
     std::vector<int>& midiBpms;
     std::vector<std::vector<bool>>& midiKeyStates;
+    bool channelDropdownOpen = false;
+    Rectangle channelDropdownBox;
+    std::vector<bool> channelMuteStates = std::vector<bool>(16, false); // 16 MIDI channels
 
     // Resources
     Font font{};
